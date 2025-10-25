@@ -6,18 +6,32 @@ using Productos;
 [Route("[controller]")]
 public class ProductosController : ControllerBase
 {
-    private ProductoRepository productoRepository;
+    private ProductoRepository _productoRepository;
     public ProductosController()
     {
-        productoRepository = new ProductoRepository();
+        _productoRepository = new ProductoRepository();
     }
 
     [HttpPost("AltaProducto")]
     public ActionResult<string> AltaProducto(Producto nuevoProducto)
     {
-        productoRepository.Alta(nuevoProducto);
+        _productoRepository.Alta(nuevoProducto);
         return Ok("Producto dado de alta exitosamente");
     }
+
+    [HttpGet("products")]
+    public IActionResult GetAll()
+    {
+        var productos = _productoRepository.GetAll();
+        return Ok(productos);
+    }
+
+
+
+
+
+
+
 
 
 }
