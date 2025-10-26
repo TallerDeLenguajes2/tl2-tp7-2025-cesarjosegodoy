@@ -1,5 +1,6 @@
 using Microsoft.Data.Sqlite;
 using Productos;
+using Presupuestos;
 
 namespace ProductoRepotitorys
 {
@@ -68,6 +69,56 @@ namespace ProductoRepotitorys
             Connection.Close();
             return productos;
         }
+
+
+        // Obtener presupuesto con sus productos
+        public Presupuesto? ObtenerPorId(int id)
+        {
+            using var conexion = new SqliteConnection(_connectionString);
+            conexion.Open();
+
+            // Datos del presupuesto
+            string sqlPresupuesto = "SELECT idPresupuesto, nombreDestinatario, fechaCreacion FROM Presupuestos WHERE idPresupuesto = @id";
+            using var cmdPres = new SqliteCommand(sqlPresupuesto, conexion);
+            cmdPres.Parameters.AddWithValue("@id", id);
+            using var lector = cmdPres.ExecuteReader();
+
+            if (!lector.Read()) return null;
+
+            var presupuesto = new Presupuesto
+            {
+                IdPresupuesto = lector.GetInt32(0),
+                NombreDestinatario = lector.GetString(1),
+                FechaCreacion = DateTime.Parse(lector.GetString(2))
+            };
+
+            lector.Close();
+
+        }
+
+         // Eliminar presupuesto
+        public bool Eliminar(int id)
+        {
+            using var conexion = new SqliteConnection(_connectionString);
+            conexion.Open();
+
+            // Eliminar detalles primero
+            string sqlDetalle = "DELETE FROM PresupuestoDetalle WHERE idPresupuesto = @id";
+            using var cmdDetalle = new SqliteCommand(sqlDetalle, conexion);
+            cmdDetalle.Parameters.AddWithValue("@id", id);
+            cmdDetalle.ExecuteNonQuery();
+
+            // Luego el presupuesto
+            string sqlPres = "DELETE FROM Presupuestos WHERE idPresupuesto = @id";
+            using var cmdPres = new SqliteCommand(sqlPres, conexion);
+            cmdPres.Parameters.AddWithValue("@id", id);
+            int filas = cmdPres.ExecuteNonQuery();
+
+            return filas > 0;
+        }
+
+
+
 
 
     }

@@ -14,6 +14,15 @@ namespace Productos
 
         [JsonPropertyName("precio")]
         public int Precio { get; set; }
+
+        public Producto(){}
+
+        public Producto(int _id, string _descripcion, int _precio)
+        {
+            IdProducto = _id;
+            Descripcion = _descripcion;
+            Precio = _precio;
+        }
     }
 
 }
