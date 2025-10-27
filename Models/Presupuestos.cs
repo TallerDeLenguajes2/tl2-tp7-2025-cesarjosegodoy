@@ -1,6 +1,6 @@
 using System.Text.Json.Serialization;
 using PresupuestoDetalles;
-
+using Productos;
 
 namespace Presupuestos
 {
@@ -21,14 +21,16 @@ namespace Presupuestos
         public List<PresupuestoDetalle> Detalle { get; set; } = new();
 
 
-       public double MontoPresupuesto()
+        public decimal MontoPresupuesto()
         {
-            return Detalle.Sum(d => d.Producto.Precio * d.Cantidad);
+            return Detalle
+                .Where(d => d.Producto != null)
+                .Sum(d => d.Producto!.Precio * d.Cantidad);
         }
 
-        public double MontoPresupuestoConIva()
+        public decimal MontoPresupuestoConIva()
         {
-            return MontoPresupuesto() * 1.21;
+            return MontoPresupuesto() * 1.21m; // m indica que es un número decimal
         }
 
         public int CantidadProductos()
@@ -36,7 +38,17 @@ namespace Presupuestos
             return Detalle.Sum(d => d.Cantidad);
         }
 
+        public Presupuesto(string nombreDestinatario)
+        {
+            NombreDestinatario = nombreDestinatario;
+            FechaCreacion = DateOnly.FromDateTime(DateTime.Now);
+        }
+
+
+
 
     }
 
 }
+
+

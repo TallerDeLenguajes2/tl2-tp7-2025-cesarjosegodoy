@@ -38,29 +38,24 @@ namespace ProductoRepotitorys
         // - - - - 
         public List<Producto> GetAll()
         {
+            var productos = new List<Producto>();
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
 
+            const string query = "SELECT idProducto, Descripcion, Precio FROM Productos";
+            using var command = new SqliteCommand(query, connection);
+            using var reader = command.ExecuteReader();
 
-            List<Producto> productos = []; // otra forma es new() en ves de []
-            using var Connection = new SqliteConnection(_connectionString);
-            Connection.Open();
-
-            string query = "SELECT * FROM productos"; // se carga la consulta a la BDs
-            var command = new SqliteCommand(query, Connection);
-
-            using (SqliteDataReader reader = command.ExecuteReader())
+            while (reader.Read())
             {
-                while (reader.Read())
+                productos.Add(new Producto
                 {
-                    var producto = new Producto
-                    {
-                        IdProducto = Convert.ToInt32(reader["idProducto"]),
-                        Descripcion = reader["Descripcion"].ToString(),
-                        Precio = Convert.ToInt32(reader["Precio"])
-                    };
-                    productos.Add(producto);
-                }
+                    IdProducto = reader.GetInt32(0),
+                    Descripcion = reader.GetString(1),
+                    Precio = reader.GetInt32(2)
+                });
             }
-            Connection.Close();
+
             return productos;
         }
 
@@ -115,8 +110,6 @@ namespace ProductoRepotitorys
 
             return cmd.ExecuteNonQuery() > 0;
         }
-
-
 
 
 
