@@ -6,11 +6,11 @@ namespace Productos
 
     public class Producto
     {
-        [JsonPropertyName("id")]
+       [JsonPropertyName("id")]
         public int IdProducto { get; set; }
 
         [JsonPropertyName("descripcion")]
-        public string? Descripcion { get; set; }
+        public string Descripcion { get; set; }
 
         [JsonPropertyName("precio")]
         public int Precio { get; set; }

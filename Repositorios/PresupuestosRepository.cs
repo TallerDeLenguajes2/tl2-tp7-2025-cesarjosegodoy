@@ -2,137 +2,177 @@ using System.Collections.Generic;
 using Microsoft.Data.Sqlite;
 using Productos;
 using Presupuestos;
+using PresupuestoDetalles;
 
-namespace Repositories{
+namespace RepositoriesP
+{
 
-public class PresupuestoRepository
+    public class PresupuestoRepository
     {
-        private string cadenaConexion = "Data Source=tienda.db;";
+        private string _cadenaConexion = "Data Source=Db/Tienda.db;"; // base de datos
 
         // Crear nuevo presupuesto
-        public void Crear(Presupuesto presupuesto)
+        public void Crear(Presupuesto p)
         {
-            using var conexion = new SqliteConnection(cadenaConexion);
-            conexion.Open();
+            using (SqliteConnection conexion = new SqliteConnection(_cadenaConexion))
+            {
+                conexion.Open();
+                string sql = "INSERT INTO Presupuestos (nombreDestinatario, FechaCreacion) VALUES (@nombreDestinatario, @fecha)";
 
-            string sql = "INSERT INTO Presupuestos (nombreDestinatario, fechaCreacion) VALUES (@nombre, @fecha)";
-            using var comando = new SqliteCommand(sql, conexion);
-            comando.Parameters.AddWithValue("@nombre", presupuesto.NombreDestinatario);
-            comando.Parameters.AddWithValue("@fecha", presupuesto.FechaCreacion);
-            comando.ExecuteNonQuery();
+                using (var cmd = new SqliteCommand(sql, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@nombreDestinatario", p.NombreDestinatario);
+                    cmd.Parameters.AddWithValue("@fecha", DateTime.Now.ToString("yyyy-MM-dd"));
+                    cmd.ExecuteNonQuery();
+                }
+            }
         }
 
         // Listar todos los presupuestos
         public List<Presupuesto> Listar()
         {
-            var lista = new List<Presupuesto>();
-            using var conexion = new SqliteConnection(cadenaConexion);
-            conexion.Open();
+            List<Presupuesto> lista = new List<Presupuesto>();
 
-            string sql = "SELECT idPresupuesto, nombreDestinatario, fechaCreacion FROM Presupuestos";
-            using var comando = new SqliteCommand(sql, conexion);
-            using var lector = comando.ExecuteReader();
-
-            while (lector.Read())
+            using (SqliteConnection conexion = new SqliteConnection(_cadenaConexion))
             {
-                var p = new Presupuesto
-                {
-                    IdPresupuesto = lector.GetInt32(0),
-                    NombreDestinatario = lector.GetString(1),
-                    FechaCreacion = DateTime.Parse(lector.GetString(2))
-                };
-                lista.Add(p);
-            }
+                conexion.Open();
+                string sql = "SELECT * FROM Presupuestos";
 
+                using (var cmd = new SqliteCommand(sql, conexion))
+
+                using (var reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        Presupuesto p = new Presupuesto()
+                        {
+                            IdPresupuesto = reader.GetInt32(0),
+                            NombreDestinatario = reader.GetString(1),
+                            FechaCreacion = DateOnly.Parse(reader.GetString(2)),//reader.GetString(2),//DateTime.Parse(reader.GetString(2))
+                            Detalle = new List<PresupuestoDetalle>()
+                        };
+                        lista.Add(p);
+                    }
+                }
+            }
             return lista;
         }
 
-        // Obtener presupuesto con sus productos
-        public Presupuesto? ObtenerPorId(int id)
+        // Obtener un presupuesto con su detalle (productos + cantidad)
+        public Presupuesto ObtenerPorId(int id)
         {
-            using var conexion = new SqliteConnection(cadenaConexion);
-            conexion.Open();
+            Presupuesto p = null;
 
-            // Datos del presupuesto
-            string sqlPresupuesto = "SELECT idPresupuesto, nombreDestinatario, fechaCreacion FROM Presupuestos WHERE idPresupuesto = @id";
-            using var cmdPres = new SqliteCommand(sqlPresupuesto, conexion);
-            cmdPres.Parameters.AddWithValue("@id", id);
-            using var lector = cmdPres.ExecuteReader();
-
-            if (!lector.Read()) return null;
-
-            var presupuesto = new Presupuesto
+            using (SqliteConnection conexion = new SqliteConnection(_cadenaConexion))
             {
-                IdPresupuesto = lector.GetInt32(0),
-                NombreDestinatario = lector.GetString(1),
-                FechaCreacion = DateTime.Parse(lector.GetString(2))
-            };
+                conexion.Open();
 
-            lector.Close();
+                // Obtener datos del presupuesto
+                string sqlPres = "SELECT * FROM Presupuestos WHERE IdPresupuesto = @id";
 
-            // Cargar los detalles
-            string sqlDetalle = @"SELECT pd.cantidad, pr.idProducto, pr.descripcion, pr.precio
-                                  FROM PresupuestoDetalle pd
-                                  INNER JOIN Productos pr ON pr.idProducto = pd.idProducto
-                                  WHERE pd.idPresupuesto = @id";
-
-            using var cmdDet = new SqliteCommand(sqlDetalle, conexion);
-            cmdDet.Parameters.AddWithValue("@id", id);
-            using var lectorDet = cmdDet.ExecuteReader();
-
-            while (lectorDet.Read())
-            {
-                var detalle = new PresupuestoDetalle
+                using (var cmd = new SqliteCommand(sqlPres, conexion))
                 {
-                    Producto = new Producto
-                    {
-                        IdProducto = lectorDet.GetInt32(1),
-                        Descripcion = lectorDet.GetString(2),
-                        Precio = lectorDet.GetInt32(3)
-                    },
-                    Cantidad = lectorDet.GetInt32(0)
-                };
-                presupuesto.Detalle.Add(detalle);
-            }
+                    cmd.Parameters.AddWithValue("@id", id);
 
-            return presupuesto;
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        if (reader.Read())
+                        {
+                            p = new Presupuesto()
+                            {
+                                IdPresupuesto = reader.GetInt32(0),
+                                NombreDestinatario = reader.GetString(1),
+                                FechaCreacion = DateOnly.Parse(reader.GetString(2)),//DateTime.Parse(reader.GetString(2))
+                                Detalle = new List<PresupuestoDetalle>()
+                            };
+                        }
+                    }
+                }
+
+                if (p == null) return null;
+
+                // Obtener los productos del presupuesto
+                string sqlDet = @"SELECT pd.IdProducto, pr.descripcion, pr.precio, pd.cantidad
+                                  FROM PresupuestosDetalle pd
+                                  JOIN Productos pr ON pd.IdProducto = pr.idProducto
+                                  WHERE pd.IdPresupuesto = @id";
+
+                using (var cmd = new SqliteCommand(sqlDet, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+
+                    using (var reader = cmd.ExecuteReader())
+                    {
+                        while (reader.Read())
+                        {
+                            Producto prod = new Producto()
+                            {
+                                IdProducto = reader.GetInt32(0),
+                                Descripcion = reader.GetString(1),
+                                Precio = reader.GetInt32(2)
+                            };
+
+                            PresupuestoDetalle det = new PresupuestoDetalle()
+                            {
+                                Producto = prod,
+                                Cantidad = reader.GetInt32(3)
+
+                            };
+                            p.Detalle.Add(det);
+                        }
+                    }
+                }
+            }
+            return p;
         }
 
-        // Agregar un producto a un presupuesto
+        // Agregar un producto a un presupuesto existente
         public void AgregarProducto(int idPresupuesto, int idProducto, int cantidad)
         {
-            using var conexion = new SqliteConnection(cadenaConexion);
-            conexion.Open();
+            using (SqliteConnection conexion = new SqliteConnection(_cadenaConexion))
+            {
+                conexion.Open();
+                string sql = "INSERT INTO PresupuestosDetalle (IdPresupuesto, IdProducto, cantidad) VALUES (@idPres, @idProd, @cant)";
 
-            string sql = "INSERT INTO PresupuestoDetalle (idPresupuesto, idProducto, cantidad) VALUES (@pres, @prod, @cant)";
-            using var comando = new SqliteCommand(sql, conexion);
-            comando.Parameters.AddWithValue("@pres", idPresupuesto);
-            comando.Parameters.AddWithValue("@prod", idProducto);
-            comando.Parameters.AddWithValue("@cant", cantidad);
-            comando.ExecuteNonQuery();
+                using (var cmd = new SqliteCommand(sql, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@idPres", idPresupuesto);
+                    cmd.Parameters.AddWithValue("@idProd", idProducto);
+                    cmd.Parameters.AddWithValue("@cant", cantidad);
+                    cmd.ExecuteNonQuery();
+                }
+            }
         }
 
-        // Eliminar presupuesto
+        // Eliminar un presupuesto (y su detalle)
         public bool Eliminar(int id)
         {
-            using var conexion = new SqliteConnection(cadenaConexion);
-            conexion.Open();
+            using (SqliteConnection conexion = new SqliteConnection(_cadenaConexion))
+            {
+                conexion.Open();
 
-            // Eliminar detalles primero
-            string sqlDetalle = "DELETE FROM PresupuestoDetalle WHERE idPresupuesto = @id";
-            using var cmdDetalle = new SqliteCommand(sqlDetalle, conexion);
-            cmdDetalle.Parameters.AddWithValue("@id", id);
-            cmdDetalle.ExecuteNonQuery();
+                // Eliminar detalles asociados
+                string sqlDet = "DELETE FROM PresupuestosDetalle WHERE IdPresupuesto = @id";
 
-            // Luego el presupuesto
-            string sqlPres = "DELETE FROM Presupuestos WHERE idPresupuesto = @id";
-            using var cmdPres = new SqliteCommand(sqlPres, conexion);
-            cmdPres.Parameters.AddWithValue("@id", id);
-            int filas = cmdPres.ExecuteNonQuery();
+                using (var cmd = new SqliteCommand(sqlDet, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    cmd.ExecuteNonQuery();
+                }
 
-            return filas > 0;
+                // Eliminar presupuesto
+                string sqlPres = "DELETE FROM Presupuestos WHERE IdPresupuesto = @id";
+
+                using (var cmd = new SqliteCommand(sqlPres, conexion))
+                {
+                    cmd.Parameters.AddWithValue("@id", id);
+                    int filas = cmd.ExecuteNonQuery();
+                    return filas > 0;
+                }
+            }
         }
     }
+
 
 
 }

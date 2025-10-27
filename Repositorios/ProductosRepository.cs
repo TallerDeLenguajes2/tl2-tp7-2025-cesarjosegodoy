@@ -8,13 +8,9 @@ namespace ProductoRepotitorys
 
     public class ProductoRepository
     {
-        private string _connectionString = "Data Source=Db/Tienda.db;";
+        private string _connectionString = "Data Source=Db/Tienda.db;"; // base de datos
 
-        /// <summary>
-        /// Metodo : Alta (crear)   
-        /// </summary>
-        /// <param name="producto"></param>
-        /// <returns></returns>
+        // - - - - - Alta
         public int Alta(Producto producto)
         {
 
@@ -39,18 +35,16 @@ namespace ProductoRepotitorys
 
 
         }
-        /// <summary>
-        /// Metodo : Listar (Todo)   
-        /// </summary>
-        /// <param name="producto"></param>
-        /// <returns></returns>
+        // - - - - 
         public List<Producto> GetAll()
         {
-            string query = "SELECT * FROM productos";
-            List<Producto> productos = [];
+
+
+            List<Producto> productos = []; // otra forma es new() en ves de []
             using var Connection = new SqliteConnection(_connectionString);
             Connection.Open();
 
+            string query = "SELECT * FROM productos"; // se carga la consulta a la BDs
             var command = new SqliteCommand(query, Connection);
 
             using (SqliteDataReader reader = command.ExecuteReader())
@@ -59,7 +53,7 @@ namespace ProductoRepotitorys
                 {
                     var producto = new Producto
                     {
-                        //Id = Convert.ToInt32(reader["idProducto"]),
+                        IdProducto = Convert.ToInt32(reader["idProducto"]),
                         Descripcion = reader["Descripcion"].ToString(),
                         Precio = Convert.ToInt32(reader["Precio"])
                     };
@@ -71,50 +65,55 @@ namespace ProductoRepotitorys
         }
 
 
-        // Obtener presupuesto con sus productos
-        public Presupuesto? ObtenerPorId(int id)
+        // 
+        public Producto? GetById(int id)
         {
-            using var conexion = new SqliteConnection(_connectionString);
-            conexion.Open();
+            using var Connection = new SqliteConnection(_connectionString);
+            Connection.Open();
 
-            // Datos del presupuesto
-            string sqlPresupuesto = "SELECT idPresupuesto, nombreDestinatario, fechaCreacion FROM Presupuestos WHERE idPresupuesto = @id";
-            using var cmdPres = new SqliteCommand(sqlPresupuesto, conexion);
-            cmdPres.Parameters.AddWithValue("@id", id);
-            using var lector = cmdPres.ExecuteReader();
+            var query = "SELECT idProducto, Descripcion, Precio FROM Productos WHERE idProducto = @id";
+            var command = new SqliteCommand(query, Connection);
+            command.Parameters.AddWithValue("@id", id);
 
-            if (!lector.Read()) return null;
+            using var reader = command.ExecuteReader();
 
-            var presupuesto = new Presupuesto
+            if (reader.Read())
             {
-                IdPresupuesto = lector.GetInt32(0),
-                NombreDestinatario = lector.GetString(1),
-                FechaCreacion = DateTime.Parse(lector.GetString(2))
-            };
-
-            lector.Close();
+                return new Producto
+                {
+                    IdProducto = reader.GetInt32(0),
+                    Descripcion = reader.GetString(1),
+                    Precio = reader.GetInt32(2)
+                };
+            }
+            return null;
 
         }
 
-         // Eliminar presupuesto
         public bool Eliminar(int id)
         {
-            using var conexion = new SqliteConnection(_connectionString);
-            conexion.Open();
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
 
-            // Eliminar detalles primero
-            string sqlDetalle = "DELETE FROM PresupuestoDetalle WHERE idPresupuesto = @id";
-            using var cmdDetalle = new SqliteCommand(sqlDetalle, conexion);
-            cmdDetalle.Parameters.AddWithValue("@id", id);
-            cmdDetalle.ExecuteNonQuery();
+            var query = "DELETE FROM Productos WHERE idProducto=@id";
+            using var cmd = new SqliteCommand(query, connection);
+            cmd.Parameters.AddWithValue("@id", id);
 
-            // Luego el presupuesto
-            string sqlPres = "DELETE FROM Presupuestos WHERE idPresupuesto = @id";
-            using var cmdPres = new SqliteCommand(sqlPres, conexion);
-            cmdPres.Parameters.AddWithValue("@id", id);
-            int filas = cmdPres.ExecuteNonQuery();
+            return cmd.ExecuteNonQuery() > 0;
+        }
 
-            return filas > 0;
+        public bool Modificar(int id, Producto prod)
+        {
+            using var connection = new SqliteConnection(_connectionString);
+            connection.Open();
+
+            var query = "UPDATE Productos SET Descripcion=@d, Precio=@p WHERE idProducto=@id";
+            using var cmd = new SqliteCommand(query, connection);
+            cmd.Parameters.AddWithValue("@id", id);
+            cmd.Parameters.AddWithValue("@d", prod.Descripcion);
+            cmd.Parameters.AddWithValue("@p", prod.Precio);
+
+            return cmd.ExecuteNonQuery() > 0;
         }
 
 
