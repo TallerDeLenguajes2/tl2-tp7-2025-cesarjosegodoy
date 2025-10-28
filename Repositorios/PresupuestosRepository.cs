@@ -72,7 +72,7 @@ namespace RepositoriesP
 
             using var conexion = new SqliteConnection(_cadenaConexion);
             conexion.Open();
-
+            
             string sqlPres = "SELECT IdPresupuesto, nombreDestinatario, FechaCreacion FROM Presupuestos WHERE IdPresupuesto = @id";
             using var cmdPres = new SqliteCommand(sqlPres, conexion);
             cmdPres.Parameters.AddWithValue("@id", id);

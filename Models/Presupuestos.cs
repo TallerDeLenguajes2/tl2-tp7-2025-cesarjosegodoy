@@ -20,7 +20,7 @@ namespace Presupuestos
         [JsonPropertyName("detalle")]
         public List<PresupuestoDetalle> Detalle { get; set; } = new();
 
-
+        public Presupuesto(){}
         public decimal MontoPresupuesto()
         {
             return Detalle
